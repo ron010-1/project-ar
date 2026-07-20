@@ -1,0 +1,87 @@
+{
+  "info": {
+    "name": "project-ar - Payment API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "pedidoId", "value": "1" },
+    { "key": "pagamentoId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Pedidos",
+      "item": [
+        {
+          "name": "Criar pedido",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"Assinatura mensal\",\n  \"valor\": 99.90\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/pedidos", "host": ["{{baseUrl}}"], "path": ["api", "pedidos"] }
+          }
+        },
+        {
+          "name": "Listar pedidos",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/pedidos", "host": ["{{baseUrl}}"], "path": ["api", "pedidos"] }
+          }
+        },
+        {
+          "name": "Buscar pedido por id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/pedidos/{{pedidoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pedidos", "{{pedidoId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pagamentos",
+      "item": [
+        {
+          "name": "Gerar pagamento",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pedidoId\": {{pedidoId}}\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/pagamentos", "host": ["{{baseUrl}}"], "path": ["api", "pagamentos"] }
+          }
+        },
+        {
+          "name": "Consultar status do pagamento",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/pagamentos/{{pagamentoId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pagamentos", "{{pagamentoId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Historico de pagamentos",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/pagamentos", "host": ["{{baseUrl}}"], "path": ["api", "pagamentos"] }
+          }
+        }
+      ]
+    }
+  ]
+}
