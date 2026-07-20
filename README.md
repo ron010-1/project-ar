@@ -56,6 +56,10 @@ OpenAPI JSON: `http://localhost:8080/v3/api-docs`
 | GET | /api/pagamentos/{id}/status | Consultar status atual no gateway |
 | GET | /api/pagamentos | Histórico de pagamentos |
 
+## Slide de apresentação
+
+`docs/apresentacao.html` — abra direto no navegador (setas do teclado ou botões no canto inferior direito para navegar entre os slides).
+
 ## Testes manuais
 
 A coleção do Postman está em `postman/project-ar.postman_collection.json`.

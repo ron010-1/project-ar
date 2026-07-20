@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Payment API — Integração com Mercado Pago</title>
+<style>
+  :root {
+    --paper: #E4E7DD;
+    --paper-raised: #EEF0E7;
+    --ink: #1B2420;
+    --ink-soft: #4B564E;
+    --ink-faint: #7C877E;
+    --line: #A9B3A2;
+    --accent-approve: #1F6E4C;
+    --accent-pending: #A8631E;
+    --accent-refuse: #9B2F2F;
+    --accent: #1F6E4C;
+    --shadow-card: 0 1px 0 rgba(27,36,32,0.08), 0 10px 24px rgba(27,36,32,0.06);
+
+    --font-display: ui-serif, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, "Times New Roman", serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, "Roboto Mono", "Liberation Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #141C17;
+      --paper-raised: #1B2620;
+      --ink: #E7E3D6;
+      --ink-soft: #A9B3A2;
+      --ink-faint: #6C7A70;
+      --line: #3B473F;
+      --accent-approve: #4FAE81;
+      --accent-pending: #D98A3D;
+      --accent-refuse: #D9615F;
+      --accent: #4FAE81;
+      --shadow-card: 0 1px 0 rgba(0,0,0,0.3), 0 10px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #141C17;
+    --paper-raised: #1B2620;
+    --ink: #E7E3D6;
+    --ink-soft: #A9B3A2;
+    --ink-faint: #6C7A70;
+    --line: #3B473F;
+    --accent-approve: #4FAE81;
+    --accent-pending: #D98A3D;
+    --accent-refuse: #D9615F;
+    --accent: #4FAE81;
+    --shadow-card: 0 1px 0 rgba(0,0,0,0.3), 0 10px 24px rgba(0,0,0,0.35);
+  }
+  :root[data-theme="light"] {
+    --paper: #E4E7DD;
+    --paper-raised: #EEF0E7;
+    --ink: #1B2420;
+    --ink-soft: #4B564E;
+    --ink-faint: #7C877E;
+    --line: #A9B3A2;
+    --accent-approve: #1F6E4C;
+    --accent-pending: #A8631E;
+    --accent-refuse: #9B2F2F;
+    --accent: #1F6E4C;
+    --shadow-card: 0 1px 0 rgba(27,36,32,0.08), 0 10px 24px rgba(27,36,32,0.06);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+
+  .deck {
+    height: 100svh;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+  }
+
+  .slide {
+    min-height: 100svh;
+    scroll-snap-align: start;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(1.5rem, 4vw, 4rem);
+    position: relative;
+  }
+
+  .card {
+    width: min(920px, 100%);
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    box-shadow: var(--shadow-card);
+    padding: clamp(1.75rem, 4vw, 3.5rem);
+    position: relative;
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    top: -7px;
+    left: 0;
+    right: 0;
+    height: 14px;
+    background-image: radial-gradient(circle at center, var(--paper) 4px, transparent 4.5px);
+    background-size: 20px 14px;
+    background-repeat: repeat-x;
+    background-position: left top;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 0.9rem;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(2rem, 4.4vw, 3.4rem);
+    line-height: 1.08;
+    margin: 0 0 0.6rem;
+    text-wrap: balance;
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(1.5rem, 3vw, 2.15rem);
+    line-height: 1.15;
+    margin: 0 0 1.4rem;
+    text-wrap: balance;
+  }
+
+  .lede {
+    font-size: clamp(1.02rem, 1.6vw, 1.2rem);
+    color: var(--ink-soft);
+    max-width: 62ch;
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  .tear {
+    border: none;
+    border-top: 1px dashed var(--line);
+    margin: 1.6rem 0;
+  }
+
+  .meta-line {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--ink-faint);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.2rem;
+    letter-spacing: 0.02em;
+  }
+
+  ul.bullets {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.05rem;
+  }
+  ul.bullets li {
+    display: grid;
+    grid-template-columns: 1.6rem 1fr;
+    column-gap: 0.7rem;
+    font-size: clamp(0.98rem, 1.4vw, 1.08rem);
+    line-height: 1.5;
+    color: var(--ink);
+  }
+  ul.bullets li::before {
+    content: "—";
+    color: var(--accent);
+    font-family: var(--font-mono);
+  }
+
+  ol.steps {
+    list-style: none;
+    counter-reset: step;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+  }
+  ol.steps li {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 2.6rem 1fr;
+    column-gap: 0.9rem;
+    align-items: baseline;
+    padding-bottom: 1.1rem;
+    border-bottom: 1px dashed var(--line);
+  }
+  ol.steps li:last-child { border-bottom: none; padding-bottom: 0; }
+  ol.steps li::before {
+    content: counter(step, decimal-leading-zero);
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    color: var(--accent);
+  }
+  .step-title {
+    font-weight: 600;
+    font-size: 1.02rem;
+  }
+  .step-detail {
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+    margin-top: 0.25rem;
+    line-height: 1.5;
+  }
+  .step-detail code {
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 0.05em 0.4em;
+  }
+
+  .stamp {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.28em 0.6em;
+    border: 2px solid currentColor;
+    border-radius: 3px;
+    transform: rotate(-3deg);
+  }
+  .stamp.pendente { color: var(--accent-pending); }
+  .stamp.aprovado { color: var(--accent-approve); }
+  .stamp.recusado { color: var(--accent-refuse); }
+  .stamp.cancelado { color: var(--ink-faint); }
+
+  .arch {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+  }
+  .arch-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.7rem;
+  }
+  .arch-box {
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 0.9rem 1rem;
+    background: var(--paper);
+    text-align: center;
+  }
+  .arch-box .label {
+    font-weight: 600;
+    font-size: 0.92rem;
+  }
+  .arch-box .sub {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-faint);
+    margin-top: 0.25rem;
+  }
+  .arch-box.accent { border-color: var(--accent); }
+  .arch-arrow {
+    text-align: center;
+    color: var(--ink-faint);
+    font-family: var(--font-mono);
+    font-size: 1.1rem;
+  }
+
+  table.endpoints {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+  .table-wrap { overflow-x: auto; }
+  table.endpoints th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    border-bottom: 1px solid var(--line);
+    padding: 0 0.6rem 0.6rem 0;
+  }
+  table.endpoints td {
+    padding: 0.7rem 0.6rem 0.7rem 0;
+    border-bottom: 1px dashed var(--line);
+    vertical-align: top;
+  }
+  table.endpoints tr:last-child td { border-bottom: none; }
+  .method {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.82rem;
+  }
+  .method.get { color: var(--accent-approve); }
+  .method.post { color: var(--accent-pending); }
+  .route {
+    font-family: var(--font-mono);
+    font-size: 0.88rem;
+    white-space: nowrap;
+  }
+
+  .call-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+  .call-card {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .call-card .req {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 0.55rem 0.8rem;
+    background: var(--paper);
+    border-bottom: 1px dashed var(--line);
+    color: var(--accent);
+  }
+  .call-card pre {
+    margin: 0;
+    padding: 0.8rem;
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    line-height: 1.55;
+    overflow-x: auto;
+    color: var(--ink-soft);
+  }
+
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.32em 0.85em;
+    color: var(--ink-soft);
+  }
+
+  .links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-top: 1.4rem;
+  }
+  .links a {
+    font-family: var(--font-mono);
+    font-size: 0.92rem;
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: 1px solid var(--accent);
+    width: fit-content;
+    padding-bottom: 0.1em;
+  }
+  .links a:hover, .links a:focus-visible { color: var(--accent); }
+
+  .close-title {
+    font-family: var(--font-display);
+    font-size: clamp(2.2rem, 5vw, 3.6rem);
+    margin: 0 0 0.8rem;
+  }
+
+  .nav {
+    position: fixed;
+    right: clamp(0.8rem, 2vw, 1.6rem);
+    bottom: clamp(0.8rem, 2vw, 1.6rem);
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    font-family: var(--font-mono);
+    z-index: 10;
+  }
+  .nav button {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    width: 2.3rem;
+    height: 2.3rem;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .nav button:hover, .nav button:focus-visible { border-color: var(--accent); color: var(--accent); }
+  .nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .nav .count {
+    font-size: 0.82rem;
+    color: var(--ink-faint);
+    min-width: 3.4rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .fade-in {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  .fade-in.in-view {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fade-in { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <section class="slide" id="s1">
+    <div class="card fade-in">
+      <p class="eyebrow">Integração de Aplicação Java Spring com Gateway de Pagamento</p>
+      <h1>Payment API</h1>
+      <p class="lede">Cadastro de pedidos, geração de cobrança e consulta de status de pagamento integrados ao Mercado Pago.</p>
+      <hr class="tear" />
+      <p class="meta-line">
+        <span>APRESENTAÇÃO 20/07/2026</span>
+        <span>·</span>
+        <span>REPOSITÓRIO github.com/ron010-1/project-ar</span>
+      </p>
+      <p class="meta-line">
+        <span>INTEGRANTE [Seu nome aqui]</span>
+      </p>
+    </div>
+  </section>
+
+  <section class="slide" id="s2">
+    <div class="card fade-in">
+      <p class="eyebrow">01 · Objetivo</p>
+      <h2>O que este projeto se propõe a resolver</h2>
+      <ul class="bullets">
+        <li>Ligar um sistema de pedidos a um gateway de pagamento externo sem acoplar a regra de negócio aos detalhes da API do gateway.</li>
+        <li>Expor endpoints REST documentados, prontos para serem consumidos por qualquer cliente HTTP — não só a aplicação de teste.</li>
+        <li>Tratar o ciclo de vida de uma cobrança (pendente → aprovada, recusada ou cancelada) de forma rastreável e consultável.</li>
+        <li>Usar DTOs como contrato explícito de entrada e saída, e tratamento de exceções como parte do design da API, não como reação a bugs.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="slide" id="s3">
+    <div class="card fade-in">
+      <p class="eyebrow">02 · Arquitetura</p>
+      <h2>Camadas da aplicação</h2>
+      <div class="arch">
+        <div class="arch-row">
+          <div class="arch-box"><div class="label">Postman / Insomnia</div><div class="sub">cliente HTTP</div></div>
+        </div>
+        <div class="arch-arrow">↓</div>
+        <div class="arch-row">
+          <div class="arch-box accent"><div class="label">Controller</div><div class="sub">PedidoController · PagamentoController</div></div>
+        </div>
+        <div class="arch-arrow">↓</div>
+        <div class="arch-row">
+          <div class="arch-box accent"><div class="label">Service</div><div class="sub">PedidoService · PagamentoService</div></div>
+        </div>
+        <div class="arch-arrow">↓ ↘</div>
+        <div class="arch-row">
+          <div class="arch-box"><div class="label">Repository → H2</div><div class="sub">Spring Data JPA</div></div>
+          <div class="arch-box"><div class="label">MercadoPagoClient</div><div class="sub">RestClient → api.mercadopago.com</div></div>
+        </div>
+      </div>
+      <hr class="tear" />
+      <p class="lede" style="font-size: 0.92rem;">DTOs entram e saem só pelo Controller; a comunicação com o gateway fica isolada em <code style="font-family: var(--font-mono);">gateway/</code>, então trocar de Mercado Pago para outro provedor não deveria tocar em Service nem Controller.</p>
+    </div>
+  </section>
+
+  <section class="slide" id="s4">
+    <div class="card fade-in">
+      <p class="eyebrow">03 · Fluxo de integração</p>
+      <h2>Do pedido ao status final</h2>
+      <ol class="steps">
+        <li>
+          <span></span>
+          <div>
+            <div class="step-title">Cadastrar pedido</div>
+            <div class="step-detail"><code>POST /api/pedidos</code> — descrição e valor.</div>
+          </div>
+        </li>
+        <li>
+          <span></span>
+          <div>
+            <div class="step-title">Gerar pagamento</div>
+            <div class="step-detail"><code>POST /api/pagamentos</code> cria uma preferência no Mercado Pago (<code>POST /checkout/preferences</code>), grava o pagamento como <span class="stamp pendente">pendente</span> e devolve a URL de checkout.</div>
+          </div>
+        </li>
+        <li>
+          <span></span>
+          <div>
+            <div class="step-title">Pagador completa o checkout</div>
+            <div class="step-detail">Fluxo acontece na página do Mercado Pago, ambiente sandbox.</div>
+          </div>
+        </li>
+        <li>
+          <span></span>
+          <div>
+            <div class="step-title">Consultar status</div>
+            <div class="step-detail"><code>GET /api/pagamentos/{id}/status</code> busca em <code>GET /v1/payments/search</code> pelo <code>external_reference</code> do pedido e atualiza o status local para <span class="stamp aprovado">aprovado</span>, <span class="stamp recusado">recusado</span> ou <span class="stamp cancelado">cancelado</span>.</div>
+          </div>
+        </li>
+        <li>
+          <span></span>
+          <div>
+            <div class="step-title">Histórico</div>
+            <div class="step-detail"><code>GET /api/pagamentos</code> — lista tudo o que já foi gerado, direto da base local.</div>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="slide" id="s5">
+    <div class="card fade-in">
+      <p class="eyebrow">04 · Endpoints</p>
+      <h2>Seis rotas, dois recursos</h2>
+      <div class="table-wrap">
+        <table class="endpoints">
+          <thead>
+            <tr><th>Método</th><th>Rota</th><th>Descrição</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="method post">POST</td><td class="route">/api/pedidos</td><td>Cadastrar pedido</td></tr>
+            <tr><td class="method get">GET</td><td class="route">/api/pedidos</td><td>Listar pedidos</td></tr>
+            <tr><td class="method get">GET</td><td class="route">/api/pedidos/{id}</td><td>Buscar pedido por id</td></tr>
+            <tr><td class="method post">POST</td><td class="route">/api/pagamentos</td><td>Gerar pagamento no gateway</td></tr>
+            <tr><td class="method get">GET</td><td class="route">/api/pagamentos/{id}/status</td><td>Consultar status atual no gateway</td></tr>
+            <tr><td class="method get">GET</td><td class="route">/api/pagamentos</td><td>Histórico de pagamentos</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <hr class="tear" />
+      <p class="lede" style="font-size: 0.92rem;">Documentação interativa gerada via springdoc-openapi em <code style="font-family: var(--font-mono);">/swagger-ui.html</code>.</p>
+    </div>
+  </section>
+
+  <section class="slide" id="s6">
+    <div class="card fade-in">
+      <p class="eyebrow">05 · Demonstração</p>
+      <h2>Contrato de requisição e resposta</h2>
+      <div class="call-grid">
+        <div class="call-card">
+          <div class="req">POST /api/pedidos → 201</div>
+          <pre>{
+  "descricao": "Assinatura mensal",
+  "valor": 99.90
+}
+&#8595;
+{
+  "id": 1,
+  "descricao": "Assinatura mensal",
+  "valor": 99.90,
+  "dataCriacao": "2026-07-20T13:02:11Z"
+}</pre>
+        </div>
+        <div class="call-card">
+          <div class="req">POST /api/pagamentos → 201</div>
+          <pre>{ "pedidoId": 1 }
+&#8595;
+{
+  "id": 1,
+  "pedidoId": 1,
+  "status": "PENDENTE",
+  "gatewayPreferenceId": "17984...-abc",
+  "checkoutUrl": "https://mercadopago.../checkout/..."
+}</pre>
+        </div>
+        <div class="call-card">
+          <div class="req">GET /api/pagamentos/1/status → 200</div>
+          <pre>{
+  "id": 1,
+  "pedidoId": 1,
+  "status": "APROVADO",
+  "gatewayPaymentId": "98765432101",
+  "dataAtualizacao": "2026-07-20T13:05:02Z"
+}</pre>
+        </div>
+        <div class="call-card">
+          <div class="req">GET /api/pagamentos → 200</div>
+          <pre>[
+  {
+    "id": 1,
+    "pedidoId": 1,
+    "status": "APROVADO",
+    "valor": 99.90
+  }
+]</pre>
+        </div>
+      </div>
+      <hr class="tear" />
+      <p class="lede" style="font-size: 0.92rem;">Contrato validado pelos DTOs da aplicação. A execução ao vivo acontece na apresentação, usando a coleção em <code style="font-family: var(--font-mono);">postman/project-ar.postman_collection.json</code> contra a API rodando localmente.</p>
+    </div>
+  </section>
+
+  <section class="slide" id="s7">
+    <div class="card fade-in">
+      <p class="eyebrow">06 · Dificuldades e aprendizados</p>
+      <h2>O que exigiu mais decisão</h2>
+      <ul class="bullets">
+        <li>Chamar a API REST do Mercado Pago diretamente com <code style="font-family: var(--font-mono); font-size: 0.9em;">RestClient</code> em vez do SDK oficial — evita depender da assinatura exata de métodos de uma versão específica de biblioteca.</li>
+        <li>Mapear os sete status possíveis do gateway (<em>approved, pending, in_process, rejected, cancelled, refunded, charged_back</em>) para um vocabulário interno de quatro estados.</li>
+        <li>Ordenar os resultados de <code style="font-family: var(--font-mono); font-size: 0.9em;">/v1/payments/search</code> por data de criação, para sempre considerar a tentativa de pagamento mais recente de cada pedido.</li>
+        <li>Separar o tratamento de exceções por natureza do erro: validação (400), regra de negócio como pedido já pago (409) e falha de comunicação com o gateway (502).</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="slide" id="s8">
+    <div class="card fade-in">
+      <p class="eyebrow">07 · Stack e material de apoio</p>
+      <h2>Tecnologias e onde encontrar tudo</h2>
+      <div class="chip-row">
+        <span class="chip">Java 21</span>
+        <span class="chip">Spring Boot 3.3</span>
+        <span class="chip">Spring Data JPA</span>
+        <span class="chip">H2 (em memória)</span>
+        <span class="chip">springdoc-openapi</span>
+        <span class="chip">Mercado Pago REST API</span>
+        <span class="chip">Maven</span>
+      </div>
+      <div class="links">
+        <a href="https://github.com/ron010-1/project-ar" target="_blank" rel="noopener">github.com/ron010-1/project-ar</a>
+        <a href="http://localhost:8080/swagger-ui.html">localhost:8080/swagger-ui.html — Swagger UI</a>
+        <a href="#">postman/project-ar.postman_collection.json — coleção Postman</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="s9">
+    <div class="card fade-in" style="text-align:center;">
+      <p class="close-title">Perguntas?</p>
+      <p class="lede" style="margin: 0 auto;">github.com/ron010-1/project-ar</p>
+    </div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prev" aria-label="Slide anterior">←</button>
+  <span class="count" id="count">01/09</span>
+  <button id="next" aria-label="Próximo slide">→</button>
+</div>
+
+<script>
+  (function () {
+    var deck = document.getElementById('deck');
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var countEl = document.getElementById('count');
+    var current = 0;
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+    function updateCount(i) {
+      countEl.textContent = pad(i + 1) + '/' + pad(slides.length);
+    }
+
+    function goTo(i) {
+      i = Math.max(0, Math.min(slides.length - 1, i));
+      slides[i].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    document.getElementById('prev').addEventListener('click', function () { goTo(current - 1); });
+    document.getElementById('next').addEventListener('click', function () { goTo(current + 1); });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); goTo(current + 1); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(current - 1); }
+    });
+
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        var idx = slides.indexOf(entry.target);
+        if (entry.isIntersecting && entry.intersectionRatio > 0.55) {
+          current = idx;
+          updateCount(current);
+        }
+        if (entry.isIntersecting) {
+          entry.target.querySelectorAll('.fade-in').forEach(function (el) {
+            el.classList.add('in-view');
+          });
+        }
+      });
+    }, { threshold: [0, 0.55, 1] });
+
+    slides.forEach(function (s) { io.observe(s); });
+    updateCount(0);
+  })();
+</script>
+</body>
+</html>
