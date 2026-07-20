@@ -11,7 +11,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.rampex</groupId>
+    <groupId>com.riquelme</groupId>
     <artifactId>payment-api</artifactId>
     <version>1.0.0</version>
     <name>payment-api</name>
